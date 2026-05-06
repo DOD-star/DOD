@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>THE ESCAPE - MULTIPLAYER</title>
+    <style>
+        /* كود الـ CSS بتاعك زي ما هو بالمللي */
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+        #keypad-ui {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(10, 0, 10, 0.95); border: 2px solid #ff00ff; padding: 25px;
+            display: none; flex-direction: column; align-items: center; z-index: 6000;
+            box-shadow: 0 0 50px rgba(255, 0, 255, 0.3); border-radius: 15px;
+        }
+        #keypad-display { background: #000; color: #00ff00; font-size: 3rem; width: 200px; text-align: center; margin-bottom: 20px; border: 1px solid #333; letter-spacing: 10px; }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 60px); gap: 10px; }
+        .key { width: 60px; height: 60px; background: #111; color: #ff00ff; border: 1px solid #444; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; }
+        .key:hover { background: #ff00ff; color: black; }
+        .key.clear { grid-column: span 3; width: 100%; background: #300; }
+        #launcher { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #ff00ff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; }
+        #start-btn { padding: 20px 50px; font-size: 2rem; background: #ff00ff; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 10px; box-shadow: 0 0 30px #ff00ff; }
+        #subtitles { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); text-align: center; color: white; z-index: 1000; width: 85%; pointer-events: none; }
+        .en-sub { font-size: 1.6rem; display: block; font-weight: bold; color: #ff00ff; text-shadow: 2px 2px 10px #000; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid #ff00ff; border-radius: 50%; transform: translate(-50%, -50%); z-index: 2000; }
+        #end-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; opacity: 0; display: none; z-index: 10000; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 2s; }
+    </style>
+</head>
+<body>
+
+    <div id="launcher">
+        <h1 style="letter-spacing: 10px;">VOICE SYSTEM v12.1</h1>
+        <button id="start-btn">A C T I V A T E</button>
+    </div>
+
+    <div id="keypad-ui">
+        <div id="keypad-display">---</div>
+        <div class="keypad-grid">
+            <div class="key" onclick="pressKey('1')">1</div><div class="key" onclick="pressKey('2')">2</div><div class="key" onclick="pressKey('3')">3</div>
+            <div class="key" onclick="pressKey('4')">4</div><div class="key" onclick="pressKey('5')">5</div><div class="key" onclick="pressKey('6')">6</div>
+            <div class="key" onclick="pressKey('7')">7</div><div class="key" onclick="pressKey('8')">8</div><div class="key" onclick="pressKey('9')">9</div>
+            <div class="key clear" onclick="pressKey('C')">ERASE TRACES</div>
+        </div>
+    </div>
+
+    <audio id="snd-ambient" src="horror_ambient.mp3" loop preload="auto"></audio>
+    <audio id="snd-steps" src="footsteps.mp3" preload="auto"></audio>
+    <audio id="snd-click" src="button_click.mp3" preload="auto"></audio>
+    <audio id="snd-door" src="door_sliding.mp3" preload="auto"></audio>
+    <audio id="snd-whisper" src="whisper.mp3" preload="auto"></audio>
+    <audio id="snd-heart" src="heartbeat.mp3" loop preload="auto"></audio>
+
+    <div id="subtitles"><span class="en-sub" id="en-text">SYSTEM READY</span></div>
+    <div id="end-screen"><h1>ENTERING THE HALLWAY...</h1></div>
+    <div id="crosshair"></div>
+
+    <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        // إضافة مكتبات Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // إعدادات السيرفر
+        const firebaseConfig = {
+            databaseURL: "https://warzone-game-e6eb8-default-rtdb.firebaseio.com/" 
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const myID = "Player_" + Math.floor(Math.random() * 10000);
+        const playersRef = ref(db, 'players');
+        const gameStateRef = ref(db, 'gameState');
+
+        let move = {f:0,b:0,l:0,r:0}, keypadOpen = false, lightOn = false, hasUV = false, uvOn = false;
+        let inputCode = "", door, doorBoxIndex;
+        let otherPlayers = {}; 
+        const solids = [];
+
+        const playSnd = (id, vol = 1) => {
+            const s = document.getElementById(id);
+            if(s) { s.volume = vol; s.play().catch(e => {}); }
+        };
+
+        const stopSnd = (id) => {
+            const s = document.getElementById(id);
+            if(s) { s.pause(); s.currentTime = 0; }
+        };
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.pitch = 0.1; utterance.rate = 0.8;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        window.pressKey = (num) => {
+            if(num === 'C') inputCode = "";
+            else if(inputCode.length < 3) inputCode += num;
+            document.getElementById('keypad-display').innerText = inputCode.padEnd(3, '-');
+            if(inputCode === "741") {
+                // مزامنة فتح الباب أونلاين
+                update(gameStateRef, { doorOpened: true });
+                closeKeypad();
+            }
+        };
+
+        function openDoorAction() {
+            if(doorBoxIndex !== undefined) solids.splice(doorBoxIndex, 1);
+            const lift = () => { if(door.position.y < 12) { door.position.y += 0.15; requestAnimationFrame(lift); } };
+            lift();
+        }
+
+        function closeKeypad() {
+            keypadOpen = false;
+            document.getElementById('keypad-ui').style.display = 'none';
+            document.body.requestPointerLock();
+        }
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('launcher').style.display = 'none';
+            playSnd('snd-ambient', 0.3);
+            initGame();
+            speak("Welcome my friend. Light the path.");
+        });
+
+        function initGame() {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            document.body.requestPointerLock();
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.01));
+            const flashLight = new THREE.SpotLight(0xffffff, 1.5, 12, Math.PI/4, 0.4);
+            scene.add(flashLight); scene.add(flashLight.target);
+
+            const mainLight = new THREE.PointLight(0xffffff, 0, 30);
+            mainLight.position.set(0, 8, 0); scene.add(mainLight);
+
+            function createBox(w, h, d, x, y, z, color, isSolid=true) {
+                const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color}));
+                m.position.set(x,y,z); scene.add(m);
+                if(isSolid) solids.push(new THREE.Box3().setFromObject(m));
+                return m;
+            }
+
+            // الخريطة بتاعتك بالظبط
+            createBox(20, 0.2, 20, 0, 0, 0, 0x111111);
+            createBox(20, 10, 1, 0, 5, -10, 0x222222);
+            createBox(1, 10, 20, -10, 5, 0, 0x222222);
+            createBox(1, 10, 20, 10, 5, 0, 0x222222);
+            createBox(8, 10, 1, -6, 5, 10, 0x222222);
+            createBox(8, 10, 1, 6, 5, 10, 0x222222);
+            door = createBox(4, 10, 0.8, 0, 5, 10, 0x330033, true);
+            doorBoxIndex = solids.length - 1;
+
+            const powerBtn = createBox(0.4, 0.4, 0.2, 2.5, 1.5, 9.5, 0xff0000);
+
+            // الممر الخارجي
+            createBox(6, 0.2, 100, 0, 0, 60, 0x050505);
+            createBox(1, 10, 100, -3, 5, 60, 0x080808);
+            createBox(1, 10, 100, 3, 5, 60, 0x080808);
+
+            const uvPen = createBox(0.1, 0.1, 0.4, -7, 0.2, -7, 0xff00ff);
+            const uvLight = new THREE.SpotLight(0xff00ff, 0, 15, Math.PI/3, 0.5);
+            scene.add(uvLight); scene.add(uvLight.target);
+
+            const secretMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x00ff00, emissiveIntensity: 0 });
+            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 64;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = "white"; ctx.font = "40px Courier"; ctx.fillText("741", 30, 45);
+            secretMat.emissiveMap = new THREE.CanvasTexture(canvas);
+            const codePlane = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.3), secretMat);
+            codePlane.position.set(9.4, 1.5, -5); codePlane.rotation.y = -Math.PI/2; scene.add(codePlane);
+
+            // --- منطق الأونلاين (الزيادة الوحيدة) ---
+            onValue(playersRef, (snapshot) => {
+                const data = snapshot.val();
+                for (let id in data) {
+                    if (id !== myID) {
+                        if (!otherPlayers[id]) {
+                            otherPlayers[id] = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.6, 0.5), new THREE.MeshStandardMaterial({color: 0x00ff00}));
+                            scene.add(otherPlayers[id]);
+                        }
+                        otherPlayers[id].position.set(data[id].x, data[id].y, data[id].z);
+                    }
+                }
+            });
+            onValue(gameStateRef, (snap) => {
+                const state = snap.val();
+                if (state?.doorOpened) { playSnd('snd-door', 1); openDoorAction(); }
+                if (state?.lightStatus !== undefined) {
+                    lightOn = state.lightStatus;
+                    mainLight.intensity = lightOn ? 50 : 0;
+                }
+            });
+            onDisconnect(ref(db, 'players/' + myID)).remove();
+            // ---------------------------------------
+
+            document.addEventListener('mousedown', () => {
+                if(!document.pointerLockElement || keypadOpen) return;
+                const ray = new THREE.Raycaster();
+                ray.setFromCamera(new THREE.Vector2(0,0), camera);
+                if(ray.intersectObject(powerBtn).length > 0 && camera.position.distanceTo(powerBtn.position) < 4) {
+                    playSnd('snd-click', 1);
+                    update(gameStateRef, { lightStatus: !lightOn });
+                    setTimeout(() => speak(!lightOn ? "I see you." : "Darkness returns."), 200);
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if(e.code === 'KeyE' && camera.position.distanceTo(door.position) < 4) {
+                    keypadOpen = !keypadOpen;
+                    if(keypadOpen) {
+                        inputCode = ""; document.getElementById('keypad-display').innerText = "---";
+                        document.getElementById('keypad-ui').style.display = 'flex';
+                        document.exitPointerLock();
+                    } else { closeKeypad(); }
+                }
+                if(keypadOpen && !isNaN(e.key)) pressKey(e.key);
+                if(e.code === 'KeyF' && camera.position.distanceTo(uvPen.position) < 3) { hasUV = true; uvPen.visible = false; speak("UV light acquired."); }
+                if(e.code === 'Space' && hasUV) { uvOn = !uvOn; uvLight.intensity = uvOn ? 40 : 0; }
+                if(e.code === 'KeyW') move.f = 1; if(e.code === 'KeyS') move.b = 1;
+                if(e.code === 'KeyA') move.l = 1; if(e.code === 'KeyD') move.r = 1;
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if(e.code === 'KeyW') move.f = 0; if(e.code === 'KeyS') move.b = 0;
+                if(e.code === 'KeyA') move.l = 0; if(e.code === 'KeyD') move.r = 0;
+            });
+
+            camera.position.set(0, 1.6, 5);
+            camera.rotation.order = 'YXZ';
+
+            let stepTimer = 0;
+            function animate() {
+                requestAnimationFrame(animate);
+                if (document.pointerLockElement && !keypadOpen) {
+                    const oldPos = camera.position.clone();
+                    if(move.f || move.b || move.l || move.r) {
+                        stepTimer++;
+                        if(stepTimer % 22 === 0) {
+                            const s = document.getElementById('snd-steps');
+                            s.currentTime = 0; s.play().catch(()=>{});
+                        }
+                        if(move.f) camera.translateZ(-0.13); if(move.b) camera.translateZ(0.13);
+                        if(move.l) camera.translateX(-0.13); if(move.r) camera.translateX(0.13);
+                    }
+                    camera.position.y = 1.6;
+                    
+                    const pBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(0.7, 2, 0.7));
+                    for(let s of solids) { if(pBox.intersectsBox(s)) camera.position.copy(oldPos); }
+
+                    // تحديث موقعك للسيرفر
+                    set(ref(db, 'players/' + myID), { x: camera.position.x, y: camera.position.y, z: camera.position.z });
+
+                    flashLight.position.copy(camera.position);
+                    flashLight.target.position.set(0,0,-1).applyQuaternion(camera.quaternion).add(camera.position);
+
+                    if(Math.random() < 0.0005) playSnd('snd-whisper', 0.5);
+
+                    if(hasUV && uvOn) {
+                        uvLight.position.copy(camera.position);
+                        uvLight.target.position.set(0,0,-1).applyQuaternion(camera.quaternion).add(camera.position);
+                        if(camera.position.distanceTo(codePlane.position) < 5) secretMat.emissiveIntensity = 20;
+                        else secretMat.emissiveIntensity = 0;
+                    }
+
+                    if(camera.position.z > 13) {
+                        playSnd('snd-heart', 1);
+                        move = {f:0,b:0,l:0,r:0};
+                        document.exitPointerLock();
+                        document.getElementById('end-screen').style.display = 'flex';
+                        setTimeout(() => document.getElementById('end-screen').style.opacity = '1', 100);
+                        speak("Entering the hallway. Goodbye.");
+                        setTimeout(() => { window.location.href = 'hallway.html'; }, 4000);
+                    }
+                }
+                renderer.render(scene, camera);
+            }
+
+            document.addEventListener('mousemove', (e) => {
+                if (document.pointerLockElement) {
+                    camera.rotation.y -= e.movementX * 0.002;
+                    camera.rotation.x -= e.movementY * 0.002;
+                    camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+                }
+            });
+            animate();
+        }
+    </script>
+</body>
+</html>

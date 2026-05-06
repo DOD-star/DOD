@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>WAR ZONE - THE FINAL MASTER</title>
+    <style>
+        body{margin:0;overflow:hidden;background:#1a1a1a;font-family:sans-serif;}
+        
+        /* شاشة التحميل */
+        #loadingScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #0ff; z-index: 1000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .loader {
+            border: 5px solid #333; border-top: 5px solid #0ff;
+            border-radius: 50%; width: 50px; height: 50px;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #hud{position:absolute;top:20px;left:20px;color:#fff;z-index:10;pointer-events:none;}
+        #hpBarContainer{width:200px;height:12px;background:rgba(0,0,0,0.5);border:2px solid #fff;margin-top:5px;}
+        #hpBar{height:100%;width:100%;background:#2ecc71;transition:0.3s;}
+        #ammo{font-size:26px;font-weight:bold;margin-top:10px;color:#f1c40f;}
+        
+        #controls{position:absolute;top:20px;right:20px;z-index:20;display:flex;gap:10px;}
+        .btn{padding:12px 20px; background:rgba(0,0,0,0.7); color:#fff; border:2px solid #fff; cursor:pointer; font-weight:bold; border-radius:5px;}
+        .btn:hover{background:#fff; color:#000;}
+        .exit-btn{border-color:#e74c3c; color:#e74c3c;}
+
+        #minimap{position:absolute;bottom:20px;right:20px;width:160px;height:160px;background:rgba(0,0,0,0.8);border:2px solid #555;border-radius:50%;overflow:hidden;}
+        #mapCanvas{width:100%;height:100%;}
+        
+        #dot{position:absolute;top:50%;left:50%;width:6px;height:6px;background:lime;border-radius:50%;transform:translate(-50%,-50%);z-index:10;box-shadow:0 0 10px lime;}
+        #actionStatus{position:absolute;bottom:120px;left:50%;transform:translateX(-50%);color:#fff;font-size:22px;display:none;background:rgba(0,0,0,0.6);padding:8px 20px;border-radius:20px;}
+    </style>
+</head>
+<body>
+
+<div id="loadingScreen">
+    <div class="loader"></div>
+    <h2 style="letter-spacing: 5px;">RETURNING TO BASE...</h2>
+</div>
+
+<div id="hud">
+    HP <span id="hpText">100</span>
+    <div id="hpBarContainer"><div id="hpBar"></div></div>
+    <div id="ammo">AMMO: <span id="ammoVal">20</span>/20</div>
+</div>
+
+<div id="controls">
+    <button class="btn" onclick="toggleFullScreen()">FULL SCREEN</button>
+    <button class="btn exit-btn" onclick="goToGamePage()">EXIT</button>
+</div>
+
+<div id="actionStatus"></div>
+<div id="minimap"><canvas id="mapCanvas" width="160" height="160"></canvas></div>
+<div id="dot"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+let scene, camera, renderer, player, clock, weapon;
+let keys = {}, walls = [], playerBullets = [], bots = [];
+let hp = 100, ammo = 20, isADS = false, isReloading = false, isHealing = false;
+
+// أصوات
+const sfx = {
+    shoot: new Audio("shoot.mp3"),
+    run: new Audio("walk.mp3"),
+    jump: new Audio("jump.mp3"),
+    reload: new Audio("reload.mp3"),
+    heal: new Audio("heal.mp3")
+};
+sfx.run.loop = true;
+
+// وظيفة الخروج مع اللودينج
+function goToGamePage() {
+    document.getElementById("loadingScreen").style.display = "flex";
+    setTimeout(() => {
+        window.location.href = "game.html";
+    }, 2000); // 2 ثانية لودينج
+}
+
+function toggleFullScreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else if (document.exitFullscreen) document.exitFullscreen();
+}
+
+// إنشاء العالم
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+clock = new THREE.Clock();
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+let sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(50, 100, 50);
+scene.add(sun);
+
+// الأرضية الرملية
+let floorMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1 });
+let floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), floorMat);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+// الحوائط الصلبة
+function createWall(x, z, w, h, d) {
+    let mat = new THREE.MeshStandardMaterial({ color: Math.random() > 0.5 ? 0x4b5320 : 0x333333 });
+    let m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, h/2, z);
+    scene.add(m); walls.push(m);
+}
+for(let i=0; i<45; i++) createWall(Math.random()*300-150, Math.random()*300-150, 10, 6, 2);
+
+player = new THREE.Group();
+player.position.set(-20, 0, -20);
+scene.add(player);
+player.add(camera);
+camera.position.y = 1.7;
+
+// تحميل السلاح
+new THREE.GLTFLoader().load("arms_with_gun.glb", (gltf) => {
+    weapon = gltf.scene;
+    weapon.position.set(0.35, -0.5, -0.5);
+    weapon.rotation.y = Math.PI;
+    camera.add(weapon);
+});
+
+function spawnBot() {
+    let b = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.5, 1), new THREE.MeshStandardMaterial({ color: 0x8b0000 }));
+    b.position.set(Math.random()*200-100, 1.25, Math.random()*200-100);
+    b.userData = { hp: 100 };
+    scene.add(b); bots.push(b);
+}
+for(let i=0; i<12; i++) spawnBot();
+
+window.addEventListener("keydown", e => {
+    keys[e.code] = true;
+    if(e.code === "KeyR" && !isReloading && ammo < 20) performAction("RELOADING...", 2000, () => ammo = 20, sfx.reload);
+    if(e.code === "KeyH" && !isHealing && hp < 100) performAction("HEALING...", 2500, () => hp = 100, sfx.heal);
+    if(e.code === "Space" && player.position.y <= 0.1) { player.userData.vy = 0.25; sfx.jump.play(); }
+});
+window.addEventListener("keyup", e => keys[e.code] = false);
+
+function performAction(msg, time, cb, sound) {
+    if(msg.includes("RELOAD")) isReloading = true; else isHealing = true;
+    sound.play();
+    document.getElementById("actionStatus").innerText = msg;
+    document.getElementById("actionStatus").style.display = "block";
+    setTimeout(() => {
+        cb(); isReloading = false; isHealing = false;
+        document.getElementById("actionStatus").style.display = "none";
+    }, time);
+}
+
+document.addEventListener("mousedown", e => {
+    if(document.pointerLockElement !== document.body) document.body.requestPointerLock();
+    else if(e.button === 0 && !isReloading && !isHealing) shoot();
+    else if(e.button === 2) isADS = true;
+});
+document.addEventListener("mouseup", e => { if(e.button === 2) isADS = false; });
+
+function shoot() {
+    if(ammo <= 0) return;
+    ammo--; sfx.shoot.currentTime = 0; sfx.shoot.play();
+    let b = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
+    let dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+    b.position.copy(player.position).y += 1.6;
+    b.userData.velocity = dir.multiplyScalar(4.5);
+    scene.add(b); playerBullets.push(b);
+}
+
+document.addEventListener("mousemove", e => {
+    if(document.pointerLockElement === document.body) {
+        player.rotation.y -= e.movementX * 0.002;
+        camera.rotation.x -= e.movementY * 0.002;
+        camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+    }
+});
+
+const mapCanvas = document.getElementById("mapCanvas");
+const mapCtx = mapCanvas.getContext("2d");
+
+function animate() {
+    requestAnimationFrame(animate);
+    let dt = clock.getDelta();
+
+    // الحركة والاصطدام
+    let speed = (keys["ShiftLeft"] ? 15 : 9) * dt;
+    let oldPos = player.position.clone();
+    let moving = false;
+    if(keys["KeyW"]) { player.translateZ(-speed); moving = true; }
+    if(keys["KeyS"]) { player.translateZ(speed); moving = true; }
+    if(keys["KeyA"]) { player.translateX(-speed); moving = true; }
+    if(keys["KeyD"]) { player.translateX(speed); moving = true; }
+
+    // Collision الحوائط
+    let pBox = new THREE.Box3().setFromCenterAndSize(player.position, new THREE.Vector3(1.2, 4, 1.2));
+    walls.forEach(w => { if(pBox.intersectsBox(new THREE.Box3().setFromObject(w))) player.position.copy(oldPos); });
+
+    if(moving && player.position.y <= 0.1) { if(sfx.run.paused) sfx.run.play(); } else sfx.run.pause();
+
+    // جاذبية
+    player.userData.vy = (player.userData.vy || 0) - 0.015;
+    player.position.y += player.userData.vy;
+    if(player.position.y <= 0) { player.position.y = 0; player.userData.vy = 0; }
+
+    // الـ ADS الجانبي
+    if(weapon) {
+        let targetY = (isReloading || isHealing) ? -2.2 : (isADS ? -0.42 : -0.5);
+        let targetX = isADS ? 0.08 : (keys["KeyQ"] ? -0.2 : (keys["KeyE"] ? 0.7 : 0.35));
+        weapon.position.y = THREE.MathUtils.lerp(weapon.position.y, targetY, 0.15);
+        weapon.position.x = THREE.MathUtils.lerp(weapon.position.x, targetX, 0.15);
+    }
+
+    // بيك
+    camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, keys["KeyQ"] ? 0.2 : (keys["KeyE"] ? -0.2 : 0), 0.1);
+
+    // رصاص
+    playerBullets.forEach((b, i) => {
+        b.position.add(b.userData.velocity);
+        bots.forEach((bt, j) => {
+            if(b.position.distanceTo(bt.position) < 1.6) {
+                scene.remove(bt); bots.splice(j, 1); spawnBot();
+                scene.remove(b); playerBullets.splice(i, 1);
+            }
+        });
+    });
+
+    // ميني ماب
+    mapCtx.clearRect(0,0,160,160);
+    mapCtx.fillStyle = "lime"; mapCtx.fillRect(80 + player.position.x*0.6, 80 + player.position.z*0.6, 5, 5);
+    mapCtx.fillStyle = "red"; bots.forEach(b => mapCtx.fillRect(80 + b.position.x*0.6, 80 + b.position.z*0.6, 4, 4));
+
+    document.getElementById("hpBar").style.width = hp + "%";
+    document.getElementById("ammoVal").innerText = ammo;
+    renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

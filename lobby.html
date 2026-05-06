@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="utf-8">
+    <title>WAR ZONE - LOBBY</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0;
+            overflow: hidden; 
+            /* هنا بنحط الخلفية الـ GIF */
+            background: url('background.gif') no-repeat center center fixed; 
+            background-size: cover;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* طبقة سواد خفيفة فوق الـ GIF عشان الكلام يبان */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -1;
+        }
+
+        /* البروفايل */
+        #profile {
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(0, 0, 0, 0.7); padding: 10px 20px;
+            border-left: 4px solid #0ff; border-radius: 0 12px 12px 0;
+            backdrop-filter: blur(5px);
+        }
+        #p_img_display { width: 55px; height: 55px; border-radius: 50%; border: 2px solid #0ff; object-fit: cover; }
+        #p_nick_display { color: #fff; font-weight: bold; font-size: 18px; display: block; text-shadow: 0 0 10px #0ff; }
+        .sub-details { color: #0ff; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* القائمة - كبرنا الحجم شوية عشان يبان */
+        #menu {
+            position: absolute; left: 50px; top: 55%; transform: translateY(-50%);
+            z-index: 100; display: flex; flex-direction: column; gap: 8px;
+        }
+        .menu-btn {
+            background: linear-gradient(90deg, rgba(0,255,255,0.1), transparent);
+            color: #fff; border: none; border-left: 3px solid rgba(0,255,255,0.4);
+            padding: 14px 35px; font-size: 16px; font-weight: bold;
+            text-align: left; cursor: pointer; transition: 0.3s ease-in-out;
+            text-transform: uppercase; letter-spacing: 2px; width: 250px;
+            outline: none;
+        }
+        .menu-btn:hover {
+            background: linear-gradient(90deg, #0ff, transparent);
+            color: #000; padding-left: 50px; border-left: 8px solid #fff;
+            box-shadow: -10px 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .exit { border-left-color: #f00; margin-top: 10px; }
+        .exit:hover { background: linear-gradient(90deg, #f00, transparent); color: #fff; }
+
+    </style>
+</head>
+<body>
+
+    <div id="profile">
+        <img id="p_img_display" src="" alt="">
+        <div id="profile-info">
+            <span id="p_nick_display">OPERATOR</span>
+            <div class="sub-details">
+                <span id="p_name_display">Name</span> | <span id="p_country_display">Country</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="menu">
+        <button class="menu-btn" onclick="location.href='new_game.html'">New Game</button>
+        <button class="menu-btn" onclick="location.href='settings.html'">Settings</button>
+        <button class="menu-btn" onclick="location.href='achievements.html'">Achievements</button>
+        <button class="menu-btn" onclick="location.href='profile_settings.html'">Profile</button>
+        <button class="menu-btn" onclick="location.href='load_game.html'">Load</button>
+        <button class="menu-btn" onclick="location.href='credits.html'">Credits</button>
+        <button class="menu-btn" onclick="location.href='multiplayer.html'">Multiplayer</button>
+        <button class="menu-btn exit" onclick="window.close()">Exit Game</button>
+    </div>
+
+    <script>
+        // كود ربط البيانات المحفوظة
+        window.onload = function() {
+            const nick = localStorage.getItem('p_nick');
+            const name = localStorage.getItem('p_name');
+            const country = localStorage.getItem('p_country');
+            const img = localStorage.getItem('p_img');
+
+            if(nick) {
+                document.getElementById('p_nick_display').innerText = nick;
+                document.getElementById('p_name_display').innerText = name;
+                document.getElementById('p_country_display').innerText = country;
+                document.getElementById('p_img_display').src = img;
+            }
+        };
+    </script>
+</body>
+</html>

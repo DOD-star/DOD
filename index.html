@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>EYD - Cinematic Loading</title>
+    <style>
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Arial', sans-serif; }
+
+        /* حاوية النجوم - ممنوع اللمس */
+        #star-stage {
+            position: fixed; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center; z-index: 10;
+        }
+        .star-img {
+            width: 80px; position: absolute; opacity: 0;
+            transform: scale(0) translateZ(-500px); 
+            filter: blur(10px); 
+            transition: all 0.8s cubic-bezier(0.075, 0.82, 0.165, 1);
+        }
+        .star-boom {
+            opacity: 1 !important; transform: scale(1) !important; filter: blur(0) !important;
+            position: relative !important; margin: 0 15px;
+        }
+
+        /* شريط التحميل */
+        .loader-container {
+            position: fixed; bottom: 30px; width: 100%;
+            display: flex; flex-direction: column; align-items: center; z-index: 20;
+        }
+        #progress-text { color: white; font-size: 14px; letter-spacing: 5px; margin-bottom: 10px; opacity: 0.7; }
+        .bar-bg { width: 100%; height: 2px; background: rgba(255,255,255,0.05); }
+        #bar-fill { width: 0%; height: 100%; background: #fff; box-shadow: 0 0 15px #fff; transition: width 0.1s; }
+
+        /* فلاش البوليس الخفيف جداً */
+        #police-flash {
+            position: fixed; top:0; left:0; width:100%; height:100%; z-index: 100;
+            pointer-events: none; opacity: 0;
+        }
+
+        /* الـ GIF النهائي */
+        #bg-final { 
+            position: fixed; width: 100%; height: 100%; 
+            object-fit: cover; display: none; z-index: 5; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="star-stage">
+        <img src="star_icon.png" class="star-img">
+        <img src="star_icon.png" class="star-img">
+        <img src="star_icon.png" class="star-img">
+        <img src="star_icon.png" class="star-img">
+        <img src="star_icon.png" class="star-img">
+    </div>
+
+    <div id="police-flash"></div>
+    
+    <img id="bg-final" src="final_scene.gif">
+
+    <div class="loader-container">
+        <div id="progress-text">INITIALIZING SYSTEM... <span id="val">0</span>%</div>
+        <div class="bar-bg"><div id="bar-fill"></div></div>
+    </div>
+
+    <script>
+        const siren = new Audio('siren.mp3');
+        const introMusic = new Audio('intro_music.mp3'); 
+        let started = false;
+
+        // البداية عند الضغط في أي مكان
+        window.onclick = () => {
+            if(started) return;
+            started = true;
+            
+            // تشغيل موسيقى الخلفية
+            introMusic.play().catch(() => console.log("Music waiting for interaction"));
+            
+            // دخول النجوم
+            const stars = document.querySelectorAll('.star-img');
+            stars.forEach((star, index) => {
+                setTimeout(() => { star.classList.add('star-boom'); }, index * 200); 
+            });
+
+            // عداد التحميل
+            let p = 0;
+            const iv = setInterval(() => {
+                p++;
+                document.getElementById('val').innerText = p;
+                document.getElementById('bar-fill').style.width = p + "%";
+
+                // فلاش خفيف عند 90%
+                if(p === 90) flashPolice();
+
+                if(p >= 100) {
+                    clearInterval(iv);
+                    showFinalAction();
+                }
+            }, 130);
+        };
+
+        function flashPolice() {
+            const flash = document.getElementById('police-flash');
+            siren.volume = 0.2; // صوت هادي
+            siren.play();
+
+            let count = 0;
+            const fIv = setInterval(() => {
+                // ألوان شفافة جداً (10% فقط) عشان متبقاش مزعجة
+                flash.style.background = count % 2 === 0 ? 'rgba(255,0,0,0.1)' : 'rgba(0,0,255,0.1)';
+                flash.style.opacity = "1";
+                
+                setTimeout(() => { flash.style.opacity = "0"; }, 40); 
+                
+                count++;
+                if(count > 6) clearInterval(fIv);
+            }, 160);
+        }
+
+        function showFinalAction() {
+            // إظهار الـ GIF
+            document.getElementById('bg-final').style.display = 'block';
+
+            // الانتقال لصفحة اللعبة بعد ثانيتين ونصف
+            setTimeout(() => {
+                document.body.style.transition = "1s";
+                document.body.style.opacity = "0";
+                setTimeout(() => { 
+                    window.location.href = "game.html"; 
+                }, 1000);
+            }, 2500); 
+        }
+    </script>
+</body>
+</html>
