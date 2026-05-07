@@ -2,45 +2,61 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>THE ESCAPE - MULTIPLAYER</title>
+    <title>THE ESCAPE - 5s LIGHT & UV</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; user-select: none; touch-action: none; }
+        
+        /* Settings UI */
+        #settings-menu {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95); border: 2px solid #ff00ff; padding: 30px;
+            display: none; flex-direction: column; gap: 20px; z-index: 8000;
+            width: 280px; border-radius: 20px; box-shadow: 0 0 30px #ff00ff; color: white;
+        }
+        .set-btn { background: #ff00ff; color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 5px; width: 100%; }
+        #settings-icon { position: absolute; top: 20px; right: 20px; font-size: 30px; cursor: pointer; z-index: 7500; color: #ff00ff; }
+
+        /* Keypad UI */
         #keypad-ui {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(10, 0, 10, 0.95); border: 2px solid #ff00ff; padding: 25px;
-            display: none; flex-direction: column; align-items: center; z-index: 6000;
-            box-shadow: 0 0 50px rgba(255, 0, 255, 0.3); border-radius: 15px;
+            display: none; flex-direction: column; align-items: center; z-index: 6000; border-radius: 15px;
         }
         #keypad-display { background: #000; color: #00ff00; font-size: 3rem; width: 200px; text-align: center; margin-bottom: 20px; border: 1px solid #333; letter-spacing: 10px; }
         .keypad-grid { display: grid; grid-template-columns: repeat(3, 60px); gap: 10px; }
         .key { width: 60px; height: 60px; background: #111; color: #ff00ff; border: 1px solid #444; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; }
-        .key:hover { background: #ff00ff; color: black; }
-        .key.clear { grid-column: span 3; width: 100%; background: #300; }
-        #launcher { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #ff00ff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; }
-        #start-btn { padding: 20px 50px; font-size: 2rem; background: #ff00ff; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 10px; box-shadow: 0 0 30px #ff00ff; }
-        #subtitles { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); text-align: center; color: white; z-index: 1000; width: 85%; pointer-events: none; }
-        .en-sub { font-size: 1.6rem; display: block; font-weight: bold; color: #ff00ff; text-shadow: 2px 2px 10px #000; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid #ff00ff; border-radius: 50%; transform: translate(-50%, -50%); z-index: 2000; pointer-events: none; }
-        #end-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; opacity: 0; display: none; z-index: 10000; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 2s; }
 
-        /* UI الموبايل */
+        /* Launcher */
+        #launcher { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #ff00ff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999; }
+        #start-btn { padding: 20px 50px; font-size: 2rem; background: #ff00ff; color: #000; border: none; cursor: pointer; border-radius: 10px; box-shadow: 0 0 20px #ff00ff; font-weight: bold; }
+
+        /* Mobile Controls */
         #joystick-base { position: absolute; bottom: 50px; left: 50px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border: 2px solid #ff00ff; border-radius: 50%; display: none; z-index: 7000; }
-        #joystick-stick { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: #ff00ff; border-radius: 50%; opacity: 0.6; }
+        #joystick-stick { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: #ff00ff; border-radius: 50%; opacity: 0.8; }
         #mobile-btns { position: absolute; bottom: 50px; right: 30px; display: none; flex-direction: column; gap: 20px; z-index: 7000; }
-        .m-btn { width: 80px; height: 80px; background: rgba(255,0,255,0.2); border: 2px solid #ff00ff; border-radius: 50%; color: #fff; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        .m-btn { width: 80px; height: 80px; background: rgba(255,0,255,0.2); border: 2px solid #ff00ff; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; text-align: center; }
+        
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; border: 2px solid rgba(255,0,255,0.5); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="launcher">
-        <h1 style="letter-spacing: 10px;">THE ESCAPE</h1>
-        <button id="start-btn">A C T I V A T E</button>
+        <h1 style="letter-spacing: 10px; text-shadow: 0 0 20px #ff00ff;">THE ESCAPE</h1>
+        <button id="start-btn">ACTIVATE</button>
+    </div>
+
+    <div id="settings-icon">⚙️</div>
+    <div id="settings-menu">
+        <h2 style="text-align: center; color: #ff00ff;">SETTINGS</h2>
+        <button class="set-btn" id="fs-btn">TOGGLE FULLSCREEN</button>
+        <button class="set-btn" id="close-settings" style="background:#444; color:white; margin-top:10px;">CLOSE</button>
     </div>
 
     <div id="joystick-base"><div id="joystick-stick"></div></div>
     <div id="mobile-btns">
         <div class="m-btn" id="m-btn-e">INTERACT (E)</div>
-        <div class="m-btn" id="m-btn-uv">UV (SPACE)</div>
+        <div class="m-btn" id="m-btn-uv">UV LIGHT (SPACE)</div>
     </div>
 
     <div id="keypad-ui">
@@ -49,12 +65,10 @@
             <div class="key" onclick="pressKey('1')">1</div><div class="key" onclick="pressKey('2')">2</div><div class="key" onclick="pressKey('3')">3</div>
             <div class="key" onclick="pressKey('4')">4</div><div class="key" onclick="pressKey('5')">5</div><div class="key" onclick="pressKey('6')">6</div>
             <div class="key" onclick="pressKey('7')">7</div><div class="key" onclick="pressKey('8')">8</div><div class="key" onclick="pressKey('9')">9</div>
-            <div class="key clear" onclick="pressKey('C')">ERASE TRACES</div>
+            <div class="key" style="grid-column: span 3; width:100%; background:#400;" onclick="pressKey('C')">CLEAR</div>
         </div>
     </div>
 
-    <div id="subtitles"><span class="en-sub" id="en-text">SYSTEM READY</span></div>
-    <div id="end-screen"><h1>ENTERING THE HALLWAY...</h1></div>
     <div id="crosshair"></div>
 
     <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
@@ -68,16 +82,13 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         
-        const myID = "Player_" + Math.floor(Math.random() * 10000);
-        const myColor = Math.random() * 0xffffff; // لون مكعبك عند صحابك
-        
-        const playersRef = ref(db, 'players');
+        const myID = "P_" + Math.floor(Math.random() * 9999);
+        const myColor = Math.random() * 0xffffff;
         const gameStateRef = ref(db, 'gameState');
 
-        let move = {f:0,b:0,l:0,r:0}, keypadOpen = false, lightOn = false, hasUV = false, uvOn = false;
-        let inputCode = "", door, doorBoxIndex, powerBtn, uvPen;
-        let otherPlayers = {};
-        const solids = [];
+        let move = {f:0,b:0,l:0,r:0}, keypadOpen = false, hasUV = false, uvOn = false;
+        let inputCode = "", door, doorBox, powerBtn, uvPen, secretMat, uvLight, mainLight;
+        let otherPlayers = {}, solids = [];
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
         if(isMobile) {
@@ -85,27 +96,20 @@
             document.getElementById('mobile-btns').style.display = 'flex';
         }
 
-        function speak(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.pitch = 0.1; utterance.rate = 0.8;
-            window.speechSynthesis.speak(utterance);
-        }
+        // Settings
+        document.getElementById('settings-icon').onclick = () => { 
+            document.getElementById('settings-menu').style.display = 'flex'; 
+            if(!isMobile) document.exitPointerLock(); 
+        };
+        document.getElementById('close-settings').onclick = () => document.getElementById('settings-menu').style.display = 'none';
+        document.getElementById('fs-btn').onclick = () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
 
         window.pressKey = (num) => {
             if(num === 'C') inputCode = "";
             else if(inputCode.length < 3) inputCode += num;
             document.getElementById('keypad-display').innerText = inputCode.padEnd(3, '-');
-            if(inputCode === "741") {
-                update(gameStateRef, { doorOpened: true });
-                closeKeypad();
-            }
+            if(inputCode === "741") { update(gameStateRef, { doorOpened: true }); closeKeypad(); }
         };
-
-        function openDoorAction() {
-            if(doorBoxIndex !== undefined) solids.splice(doorBoxIndex, 1);
-            const lift = () => { if(door.position.y < 12) { door.position.y += 0.15; requestAnimationFrame(lift); } };
-            lift();
-        }
 
         function closeKeypad() {
             keypadOpen = false;
@@ -113,11 +117,11 @@
             if(!isMobile) document.body.requestPointerLock();
         }
 
-        document.getElementById('start-btn').addEventListener('click', () => {
+        document.getElementById('start-btn').onclick = () => {
+            update(gameStateRef, { doorOpened: false, lightStatus: false }); 
             document.getElementById('launcher').style.display = 'none';
             initGame();
-            speak("System activated. Find the way.");
-        });
+        };
 
         function initGame() {
             const scene = new THREE.Scene();
@@ -126,61 +130,67 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            if(!isMobile) {
-                document.addEventListener('click', () => { if(!keypadOpen) document.body.requestPointerLock(); });
-            }
-
             scene.add(new THREE.AmbientLight(0xffffff, 0.01));
-            const flashLight = new THREE.SpotLight(0xffffff, 1.5, 12, Math.PI/4, 0.4);
+            const flashLight = new THREE.SpotLight(0xffffff, 1.2, 10, Math.PI/4, 0.3);
             scene.add(flashLight); scene.add(flashLight.target);
 
-            const mainLight = new THREE.PointLight(0xffffff, 0, 30);
+            uvLight = new THREE.SpotLight(0xff00ff, 0, 12, Math.PI/3, 0.5);
+            scene.add(uvLight); scene.add(uvLight.target);
+
+            mainLight = new THREE.PointLight(0xffffff, 0, 30);
             mainLight.position.set(0, 8, 0); scene.add(mainLight);
 
             function createBox(w, h, d, x, y, z, color, isSolid=true) {
                 const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), new THREE.MeshStandardMaterial({color}));
                 m.position.set(x,y,z); scene.add(m);
-                if(isSolid) solids.push(new THREE.Box3().setFromObject(m));
-                return m;
+                const box = new THREE.Box3().setFromObject(m);
+                if(isSolid) solids.push(box);
+                return { mesh: m, box: box };
             }
 
-            // الخريطة
+            // Room Walls
             createBox(20, 0.2, 20, 0, 0, 0, 0x111111);
             createBox(20, 10, 1, 0, 5, -10, 0x222222);
             createBox(1, 10, 20, -10, 5, 0, 0x222222);
             createBox(1, 10, 20, 10, 5, 0, 0x222222);
             createBox(8, 10, 1, -6, 5, 10, 0x222222);
             createBox(8, 10, 1, 6, 5, 10, 0x222222);
-            door = createBox(4, 10, 0.8, 0, 5, 10, 0x330033, true);
-            doorBoxIndex = solids.length - 1;
-            powerBtn = createBox(0.4, 0.4, 0.2, 2.5, 1.5, 9.5, 0xff0000);
-            uvPen = createBox(0.1, 0.1, 0.4, -7, 0.2, -7, 0xff00ff);
 
-            const uvLight = new THREE.SpotLight(0xff00ff, 0, 15, Math.PI/3, 0.5);
-            scene.add(uvLight); scene.add(uvLight.target);
+            const doorData = createBox(4, 10, 0.5, 0, 5, 10, 0x330033, true);
+            door = doorData.mesh; doorBox = doorData.box;
 
-            const secretMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x00ff00, emissiveIntensity: 0 });
+            powerBtn = createBox(0.4, 0.4, 0.2, 2.5, 1.5, 9.5, 0xff0000).mesh;
+            uvPen = createBox(0.1, 0.1, 0.4, -7, 0.2, -7, 0xff00ff).mesh;
+
+            secretMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x00ff00, emissiveIntensity: 0 });
             const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 64;
             const ctx = canvas.getContext('2d'); ctx.fillStyle = "white"; ctx.font = "40px Courier"; ctx.fillText("741", 30, 45);
             secretMat.emissiveMap = new THREE.CanvasTexture(canvas);
-            const codePlane = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.3), secretMat);
-            codePlane.position.set(9.4, 1.5, -5); codePlane.rotation.y = -Math.PI/2; scene.add(codePlane);
+            const codePlane = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.4), secretMat);
+            codePlane.position.set(9.4, 2, -5); codePlane.rotation.y = -Math.PI/2; scene.add(codePlane);
 
-            // ممر الهروب
-            createBox(6, 0.2, 100, 0, 0, 60, 0x050505);
-            createBox(1, 10, 100, -3, 5, 60, 0x080808);
-            createBox(1, 10, 100, 3, 5, 60, 0x080808);
+            createBox(6, 0.2, 50, 0, 0, 35, 0x050505, true);
 
-            // --- أونلاين: صحابك مكعبات ملونة ---
-            onValue(playersRef, (snapshot) => {
+            // SYNC
+            onValue(gameStateRef, (snap) => {
+                const state = snap.val();
+                if (state?.doorOpened) {
+                    const lift = () => { if(door.position.y < 14) { door.position.y += 0.15; doorBox.setFromObject(door); requestAnimationFrame(lift); } };
+                    lift();
+                    setTimeout(() => { const idx = solids.indexOf(doorBox); if(idx > -1) solids.splice(idx, 1); }, 500);
+                } else {
+                    door.position.y = 5; doorBox.setFromObject(door);
+                    if(!solids.includes(doorBox)) solids.push(doorBox);
+                }
+                mainLight.intensity = state?.lightStatus ? 50 : 0;
+            });
+
+            onValue(ref(db, 'players'), (snapshot) => {
                 const data = snapshot.val();
                 for (let id in data) {
                     if (id !== myID) {
                         if (!otherPlayers[id]) {
-                            otherPlayers[id] = new THREE.Mesh(
-                                new THREE.BoxGeometry(0.8, 0.8, 0.8), 
-                                new THREE.MeshStandardMaterial({color: data[id].color || 0x00ff00})
-                            );
+                            otherPlayers[id] = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshStandardMaterial({color: data[id].color}));
                             scene.add(otherPlayers[id]);
                         }
                         otherPlayers[id].position.lerp(new THREE.Vector3(data[id].x, data[id].y + 0.4, data[id].z), 0.2);
@@ -189,113 +199,105 @@
                 for(let id in otherPlayers) { if(!data?.[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; } }
             });
 
-            onValue(gameStateRef, (snap) => {
-                const state = snap.val();
-                if (state?.doorOpened) openDoorAction();
-                if (state?.lightStatus !== undefined) { lightOn = state.lightStatus; mainLight.intensity = lightOn ? 50 : 0; }
-            });
             onDisconnect(ref(db, 'players/' + myID)).remove();
 
-            // --- التحكم (كيبورد + موبايل) ---
-            const interactAction = () => {
-                if(camera.position.distanceTo(powerBtn.position) < 4) update(gameStateRef, { lightStatus: !lightOn });
-                if(camera.position.distanceTo(door.position) < 4) {
-                    keypadOpen = true;
-                    document.getElementById('keypad-ui').style.display = 'flex';
+            const interact = () => {
+                // النور يفتح 5 ثواني فقط
+                if(camera.position.distanceTo(powerBtn.position) < 4) {
+                    update(gameStateRef, { lightStatus: true });
+                    setTimeout(() => { update(gameStateRef, { lightStatus: false }); }, 5000);
+                }
+                if(camera.position.distanceTo(door.position) < 4 && !keypadOpen && door.position.y < 6) {
+                    keypadOpen = true; document.getElementById('keypad-ui').style.display = 'flex';
                     if(!isMobile) document.exitPointerLock();
                 }
                 if(camera.position.distanceTo(uvPen.position) < 3) { hasUV = true; uvPen.visible = false; }
             };
 
-            document.getElementById('m-btn-e').addEventListener('touchstart', interactAction);
-            document.getElementById('m-btn-uv').addEventListener('touchstart', () => { if(hasUV) { uvOn = !uvOn; uvLight.intensity = uvOn ? 40 : 0; } });
-
-            // كيبورد
+            // Keyboard
             document.addEventListener('keydown', (e) => {
                 if(e.code === 'KeyW') move.f = 1; if(e.code === 'KeyS') move.b = 1;
                 if(e.code === 'KeyA') move.l = 1; if(e.code === 'KeyD') move.r = 1;
-                if(e.code === 'KeyE') interactAction();
-                if(e.code === 'Space' && hasUV) { uvOn = !uvOn; uvLight.intensity = uvOn ? 40 : 0; }
+                if(e.code === 'KeyE') interact();
+                if(e.code === 'Space' && hasUV) uvOn = !uvOn; // المسطرة للكشاف
             });
             document.addEventListener('keyup', (e) => {
                 if(e.code === 'KeyW') move.f = 0; if(e.code === 'KeyS') move.b = 0;
                 if(e.code === 'KeyA') move.l = 0; if(e.code === 'KeyD') move.r = 0;
             });
 
-            // تحريك الكاميرا تاتش
-            let touchX, touchY;
-            document.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; });
-            document.addEventListener('touchmove', (e) => {
-                if(e.touches[0].clientX > window.innerWidth/2) {
-                    const dx = e.touches[0].clientX - touchX;
-                    const dy = e.touches[0].clientY - touchY;
-                    camera.rotation.y -= dx * 0.005;
-                    camera.rotation.x -= dy * 0.005;
-                    camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
-                    touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
-                }
-            });
-
-            // جويستيك الموبايل
-            const stick = document.getElementById('joystick-stick');
-            const base = document.getElementById('joystick-base');
-            base.addEventListener('touchmove', (e) => {
-                const rect = base.getBoundingClientRect();
-                const centerX = rect.left + rect.width/2;
-                const centerY = rect.top + rect.height/2;
-                const dx = e.touches[0].clientX - centerX;
-                const dy = e.touches[0].clientY - centerY;
-                const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 40);
-                const angle = Math.atan2(dy, dx);
-                stick.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
-                move.f = dy < -10 ? 1 : 0; move.b = dy > 10 ? 1 : 0;
-                move.l = dx < -10 ? 1 : 0; move.r = dx > 10 ? 1 : 0;
-            });
-            base.addEventListener('touchend', () => { stick.style.transform = ''; move = {f:0,b:0,l:0,r:0}; });
+            // Mobile Buttons
+            document.getElementById('m-btn-e').ontouchstart = interact;
+            document.getElementById('m-btn-uv').ontouchstart = () => { if(hasUV) uvOn = !uvOn; };
 
             camera.position.set(0, 1.6, 5);
             camera.rotation.order = 'YXZ';
 
             function animate() {
                 requestAnimationFrame(animate);
-                if (!keypadOpen) {
+                if (!keypadOpen && document.getElementById('settings-menu').style.display !== 'flex') {
                     const oldPos = camera.position.clone();
                     if(move.f) camera.translateZ(-0.13); if(move.b) camera.translateZ(0.13);
                     if(move.l) camera.translateX(-0.13); if(move.r) camera.translateX(0.13);
                     camera.position.y = 1.6;
-                    
-                    const pBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(0.7, 2, 0.7));
+
+                    const pBox = new THREE.Box3().setFromCenterAndSize(camera.position, new THREE.Vector3(0.6, 1.8, 0.6));
                     for(let s of solids) { if(pBox.intersectsBox(s)) camera.position.copy(oldPos); }
 
-                    // تحديث موقعك أونلاين
                     set(ref(db, 'players/' + myID), { x: camera.position.x, y: camera.position.y, z: camera.position.z, color: myColor });
 
                     flashLight.position.copy(camera.position);
                     flashLight.target.position.set(0,0,-1).applyQuaternion(camera.quaternion).add(camera.position);
 
+                    // UV Light
                     if(hasUV && uvOn) {
+                        uvLight.intensity = 40;
                         uvLight.position.copy(camera.position);
                         uvLight.target.position.set(0,0,-1).applyQuaternion(camera.quaternion).add(camera.position);
-                        secretMat.emissiveIntensity = camera.position.distanceTo(codePlane.position) < 5 ? 20 : 0;
-                    }
+                        secretMat.emissiveIntensity = camera.position.distanceTo(codePlane.position) < 6 ? 25 : 0;
+                    } else { uvLight.intensity = 0; secretMat.emissiveIntensity = 0; }
 
-                    if(camera.position.z > 13) {
-                        document.getElementById('end-screen').style.display = 'flex';
-                        setTimeout(() => document.getElementById('end-screen').style.opacity = '1', 100);
-                        setTimeout(() => { window.location.reload(); }, 4000);
-                    }
+                    if(camera.position.z > 15) { window.location.href = 'hallway.html'; }
                 }
                 renderer.render(scene, camera);
             }
 
+            // Mouse/Touch Look
+            let tX, tY;
+            document.addEventListener('touchstart', e => { tX = e.touches[0].clientX; tY = e.touches[0].clientY; });
+            document.addEventListener('touchmove', e => {
+                if(e.touches[0].clientX > window.innerWidth/2) {
+                    camera.rotation.y -= (e.touches[0].clientX - tX) * 0.006;
+                    camera.rotation.x -= (e.touches[0].clientY - tY) * 0.006;
+                    camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+                    tX = e.touches[0].clientX; tY = e.touches[0].clientY;
+                }
+            });
+
+            // Joystick
+            const stick = document.getElementById('joystick-stick');
+            const base = document.getElementById('joystick-base');
+            base.addEventListener('touchmove', e => {
+                const rect = base.getBoundingClientRect();
+                const dx = e.touches[0].clientX - (rect.left + 60);
+                const dy = e.touches[0].clientY - (rect.top + 60);
+                const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 40);
+                const ang = Math.atan2(dy, dx);
+                stick.style.transform = `translate(${Math.cos(ang)*dist}px, ${Math.sin(ang)*dist}px)`;
+                move.f = dy < -10 ? 1 : 0; move.b = dy > 10 ? 1 : 0;
+                move.l = dx < -10 ? 1 : 0; move.r = dx > 10 ? 1 : 0;
+            });
+            base.addEventListener('touchend', () => { stick.style.transform = ''; move = {f:0,b:0,l:0,r:0}; });
+
             if(!isMobile) {
-                document.addEventListener('mousemove', (e) => {
+                document.addEventListener('mousemove', e => {
                     if (document.pointerLockElement) {
                         camera.rotation.y -= e.movementX * 0.002;
                         camera.rotation.x -= e.movementY * 0.002;
                         camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
                     }
                 });
+                document.body.onclick = () => { if(!keypadOpen) document.body.requestPointerLock(); };
             }
             animate();
         }

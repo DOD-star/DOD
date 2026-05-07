@@ -1,126 +1,182 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-    <meta charset="utf-8">
-    <title>WAR ZONE - ADVANCED SETTINGS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إعدادات اللعبة - THE ESCAPE</title>
     <style>
+        :root {
+            --primary: #ff00ff;
+            --bg: #0a0a0a;
+            --panel: #1a1a1a;
+        }
+
         body {
-            margin: 0; padding: 0; height: 100vh;
-            display: flex; align-items: center; justify-content: center;
-            background: #050505; font-family: 'Segoe UI', sans-serif; color: white;
+            margin: 0;
+            background-color: var(--bg);
+            color: white;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
             overflow: hidden;
         }
 
-        .settings-card {
-            background: rgba(10, 10, 10, 0.95);
-            border: 1px solid #0ff;
-            width: 450px; padding: 30px;
-            border-radius: 10px; box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
-            position: relative; z-index: 10;
+        .settings-container {
+            background: var(--panel);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.2);
+            width: 350px;
+            text-align: center;
         }
 
-        h1 { color: #0ff; text-transform: uppercase; letter-spacing: 3px; font-size: 22px; margin-bottom: 25px; text-align: center; }
+        h1 {
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary);
+            margin-bottom: 30px;
+            letter-spacing: 5px;
+        }
 
         .setting-item {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px; padding: 10px; background: rgba(255,255,255,0.03);
-            border-radius: 5px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
         }
 
-        label { font-size: 13px; color: #aaa; text-transform: uppercase; }
-
-        /* Full Screen Button Special Style */
-        .fs-btn {
-            background: rgba(0, 255, 255, 0.1); border: 1px solid #0ff;
-            color: #0ff; padding: 8px 15px; cursor: pointer; font-size: 12px;
-            transition: 0.3s; text-transform: uppercase;
+        label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #ccc;
         }
-        .fs-btn:hover { background: #0ff; color: #000; }
 
-        input[type="range"] { cursor: pointer; accent-color: #0ff; }
-
-        .btn-group { display: flex; gap: 10px; margin-top: 30px; }
-        button { flex: 1; padding: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase; border: none; }
-        .save { background: #0ff; color: #000; }
-        .back { background: #222; color: #fff; }
-
-        #status-msg {
-            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-            color: #0ff; font-size: 12px; display: none;
+        /* تنسيق الـ Range (الصوت والحساسية) */
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary);
+            cursor: pointer;
         }
+
+        /* تنسيق الأزرار */
+        .btn {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            padding: 12px;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: black;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        .btn-save {
+            background: var(--primary);
+            color: black;
+            margin-top: 20px;
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 20px;
+            color: #666;
+            text-decoration: none;
+            font-size: 12px;
+        }
+
+        .back-link:hover { color: white; }
     </style>
 </head>
 <body>
 
-    <div class="settings-card">
-        <h1>System Config</h1>
+    <div class="settings-container">
+        <h1>SETTINGS</h1>
 
         <div class="setting-item">
-            <label>Display Mode</label>
-            <button class="fs-btn" onclick="toggleFullScreen()">Toggle Full Screen</button>
-        </div>
-
-        <div class="setting-item">
-            <label>Audio Volume</label>
-            <input type="range" id="vol" min="0" max="1" step="0.1" value="0.8">
+            <label>مستوى الصوت (Volume): <span id="vol-val">50%</span></label>
+            <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5">
         </div>
 
         <div class="setting-item">
-            <label>Mouse Sensitivity</label>
-            <input type="range" id="sens" min="0.001" max="0.01" step="0.001" value="0.002">
+            <label>حساسية الماوس (Sensitivity): <span id="sens-val">2.0</span></label>
+            <input type="range" id="sensitivity" min="0.5" max="10" step="0.5" value="2">
         </div>
 
         <div class="setting-item">
-            <label>Post Processing</label>
-            <input type="checkbox" id="bloom" checked style="accent-color:#0ff; width:20px; height:20px;">
+            <label>جودة الجرافيك:</label>
+            <select id="graphics" style="width:100%; padding:8px; background:#333; color:white; border:none;">
+                <option value="low">منخفضة (Low)</option>
+                <option value="medium" selected>متوسطة (Medium)</option>
+                <option value="high">عالية (High)</option>
+            </select>
         </div>
 
-        <div class="btn-group">
-            <button class="back" onclick="location.href='lobby.html'">Exit</button>
-            <button class="save" onclick="applySettings()">Apply & Save</button>
-        </div>
+        <button class="btn" id="fs-btn">تبديل وضع الشاشة الكاملة</button>
+        <button class="btn btn-save" id="save-btn">حفظ الإعدادات</button>
 
-        <div id="status-msg">SETTINGS UPDATED_</div>
+        <a href="index.html" class="back-link">العودة للعبة ←</a>
     </div>
 
     <script>
-        // 1. وظيفة الـ Full Screen
-        function toggleFullScreen() {
+        // العناصر من الـ DOM
+        const volInput = document.getElementById('volume');
+        const sensInput = document.getElementById('sensitivity');
+        const graphicsInput = document.getElementById('graphics');
+        const volText = document.getElementById('vol-val');
+        const sensText = document.getElementById('sens-val');
+
+        // 1. تحميل الإعدادات المحفوظة عند فتح الصفحة
+        window.onload = () => {
+            const savedSettings = JSON.parse(localStorage.getItem('gameSettings'));
+            if (savedSettings) {
+                volInput.value = savedSettings.volume;
+                sensInput.value = savedSettings.sensitivity;
+                graphicsInput.value = savedSettings.graphics;
+                updateDisplay();
+            }
+        };
+
+        // تحديث الأرقام المعروضة بجانب الـ Sliders
+        function updateDisplay() {
+            volText.innerText = Math.round(volInput.value * 100) + "%";
+            sensText.innerText = sensInput.value;
+        }
+
+        volInput.oninput = updateDisplay;
+        sensInput.oninput = updateDisplay;
+
+        // 2. زر الحفظ (Save)
+        document.getElementById('save-btn').onclick = () => {
+            const settings = {
+                volume: volInput.value,
+                sensitivity: sensInput.value,
+                graphics: graphicsInput.value
+            };
+            
+            // حفظ في ذاكرة المتصفح
+            localStorage.setItem('gameSettings', JSON.stringify(settings));
+            alert("تم حفظ الإعدادات بنجاح!");
+        };
+
+        // 3. وضع الشاشة الكاملة
+        document.getElementById('fs-btn').onclick = () => {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    alert(`Error: ${err.message}`);
-                });
+                document.documentElement.requestFullscreen();
             } else {
                 document.exitFullscreen();
             }
-        }
-
-        // 2. حفظ الإعدادات وتطبيقها
-        function applySettings() {
-            const settings = {
-                vol: document.getElementById('vol').value,
-                sens: document.getElementById('sens').value,
-                bloom: document.getElementById('bloom').checked
-            };
-
-            // حفظ في الذاكرة
-            localStorage.setItem('game_settings', JSON.stringify(settings));
-
-            // إظهار رسالة نجاح
-            const msg = document.getElementById('status-msg');
-            msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 2000);
-        }
-
-        // 3. تحميل الإعدادات عند فتح الصفحة
-        window.onload = function() {
-            const saved = JSON.parse(localStorage.getItem('game_settings'));
-            if(saved) {
-                document.getElementById('vol').value = saved.vol;
-                document.getElementById('sens').value = saved.sens;
-                document.getElementById('bloom').checked = saved.bloom;
-            }
-        }
+        };
     </script>
 </body>
 </html>
