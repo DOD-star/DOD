@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>SECTOR B - ONLINE STRIKE</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        #ui { position: absolute; top: 15px; left: 15px; color: #00f2ff; z-index: 10; pointer-events: none; }
+        .stat { background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #00f2ff; margin-bottom: 5px; border-radius: 5px; min-width: 150px; }
+        .bar-bg { width: 100px; height: 10px; background: #222; border: 1px solid #00f2ff; display: inline-block; vertical-align: middle; margin-left: 5px; }
+        #battery-fill { width: 100%; height: 100%; background: #00f2ff; transition: 0.3s; }
+        #health-fill { width: 100%; height: 100%; background: #ff0000; transition: 0.3s; }
+        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: red; font-size: 30px; display: none; pointer-events: none; }
+        
+        /* الواجهة بتاعة الأسئلة */
+        #puzzle-ui { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); border: 2px solid #00f2ff; padding: 25px; color: #fff; text-align: center; display: none; z-index: 100; border-radius: 15px; width: 320px; box-shadow: 0 0 20px #00f2ff; }
+        input { background: #111; border: 1px solid #00f2ff; color: #fff; padding: 10px; width: 80%; text-align: center; margin-top: 10px; outline: none; }
+        #p-msg { color: #ff4444; font-size: 12px; margin-top: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div class="stat">المسافة: <span id="dist">0</span>/1500m</div>
+        <div class="stat">الصحة: <div class="bar-bg"><div id="health-fill"></div></div></div>
+        <div class="stat">البطارية: <div class="bar-bg"><div id="battery-fill"></div></div></div>
+        <div class="stat" id="status">السلاح: مقفول [2] | الكشاف: [1]</div>
+    </div>
+
+    <div id="crosshair">·</div>
+
+    <div id="puzzle-ui">
+        <h3 id="p-cat">تصنيف</h3>
+        <p id="p-ques">السؤال؟</p>
+        <input type="text" id="p-ans" placeholder="اكتب إجابتك هنا...">
+        <div id="p-msg">إجابة غلط! جرب تاني عشان تعدي..</div>
+        <br>
+        <button onclick="checkAnswer()" style="margin-top:10px; padding:10px 20px; background:#00f2ff; border:none; cursor:pointer; font-weight:bold;">فتح البوابة</button>
+    </div>
+
+    <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } } </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = { databaseURL: "https://warzone-game-e6eb8-default-rtdb.firebaseio.com/" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const myID = "Elite_" + Math.floor(Math.random() * 999);
+        const playersRef = ref(db, 'sectorB/players');
+
+        let scene, camera, renderer, player, flashLight, portal, weapon;
+        let move = { w:0, s:0, a:0, d:0 }, isLocked = false, isPaused = false;
+        let battery = 100, health = 100, flashOn = false, slot = 1;
+        let otherPlayers = {};
+        const bullets = [];
+
+        // بنك أسئلة ضخم (الأسئلة مش هتتكرر)
+        let questions = [
+            {c: "كورة", q: "من هو الهداف التاريخي لدوري أبطال أوروبا؟", a: "رونالدو"},
+            {c: "تاريخ", q: "ما هي عاصمة الدولة الإسلامية الأولى؟", a: "المدينة المنورة"},
+            {c: "ماث", q: "كم ربعاً في العدد 2؟", a: "8"},
+            {c: "فزورة", q: "شيء كلما زاد نقص؟", a: "العمر"},
+            {c: "عربي", q: "ما هو صوت الأسد؟", a: "زئير"},
+            {c: "جغرافيا", q: "أطول نهر في العالم؟", a: "النيل"},
+            {c: "علوم", q: "كوكب يسمى الكوكب الأحمر؟", a: "المريخ"},
+            {c: "كورة", q: "من فاز بكأس العالم 2022؟", a: "الارجنتين"},
+            {c: "فزورة", q: "أهون موجود وأعز مفقود؟", a: "الماء"},
+            {c: "ذكاء", q: "رقم إذا ضربته في نفسه وأضفت إليه 5 أصبح 30؟", a: "5"}
+        ];
+        let usedQuestions = [];
+
+        init();
+
+        function createFunnyCharacter() {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshStandardMaterial({color: 0x00ff00}));
+            body.position.y = 0.3;
+            const eyeGeo = new THREE.SphereGeometry(0.1);
+            const eyeMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(0.15, 0.4, -0.31);
+            const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(-0.15, 0.4, -0.31);
+            group.add(body, eyeL, eyeR);
+            return group;
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
+            renderer = new THREE.WebGLRenderer({antialias: true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.02));
+
+            const mat = new THREE.MeshStandardMaterial({color: 0x111111});
+            const floor = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 4000), mat); floor.position.z = -1500; scene.add(floor);
+            const wL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 4000), mat); wL.position.set(-5, 5, -1500); scene.add(wL);
+            const wR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 4000), mat); wR.position.set(5, 5, -1500); scene.add(wR);
+
+            player = new THREE.Group();
+            player.add(createFunnyCharacter());
+            player.position.set(0, 0, 5);
+            scene.add(player);
+            player.add(camera);
+            camera.position.set(0, 1.6, 0);
+
+            flashLight = new THREE.SpotLight(0xffffff, 0, 100, 0.5, 0.5);
+            flashLight.position.set(0, 1.5, 0);
+            player.add(flashLight);
+            player.add(flashLight.target);
+            flashLight.target.position.set(0, 1.5, -10);
+
+            weapon = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.6), new THREE.MeshStandardMaterial({color: 0x444444}));
+            weapon.position.set(0.3, 1.3, -0.5);
+            weapon.visible = false;
+            player.add(weapon);
+
+            portal = new THREE.Mesh(new THREE.TorusGeometry(3, 0.2, 16, 100), new THREE.MeshBasicMaterial({color: 0x00f2ff}));
+            portal.position.set(0, 3, -150);
+            scene.add(portal);
+
+            // Online Sync
+            onValue(playersRef, (snap) => {
+                const data = snap.val();
+                for(let id in data) {
+                    if(id !== myID) {
+                        if(!otherPlayers[id]) {
+                            otherPlayers[id] = createFunnyCharacter();
+                            scene.add(otherPlayers[id]);
+                        }
+                        otherPlayers[id].position.lerp(new THREE.Vector3(data[id].x, data[id].y, data[id].z), 0.2);
+                        otherPlayers[id].rotation.y = data[id].ry;
+                    }
+                }
+            });
+            onDisconnect(ref(db, `sectorB/players/${myID}`)).remove();
+
+            window.addEventListener('keydown', (e) => {
+                if(e.key === '1') { slot = 1; weapon.visible = false; document.getElementById('crosshair').style.display = 'none'; }
+                if(e.key === '2') { slot = 2; weapon.visible = true; document.getElementById('crosshair').style.display = 'block'; }
+                if(e.key.toLowerCase() === 'f' && battery > 0) { flashOn = !flashOn; flashLight.intensity = flashOn ? 1500 : 0; }
+                if(move.hasOwnProperty(e.key.toLowerCase())) move[e.key.toLowerCase()] = 1;
+            });
+
+            window.addEventListener('keyup', e => { if(move.hasOwnProperty(e.key.toLowerCase())) move[e.key.toLowerCase()] = 0; });
+
+            document.body.onclick = () => {
+                if(!isLocked) document.body.requestPointerLock();
+                else if(slot === 2 && !isPaused) shoot();
+            };
+
+            document.addEventListener('pointerlockchange', () => { isLocked = document.pointerLockElement === document.body; });
+            document.addEventListener('mousemove', (e) => {
+                if(isLocked && !isPaused) {
+                    player.rotation.y -= e.movementX * 0.0025;
+                    camera.rotation.x -= e.movementY * 0.0025;
+                    camera.rotation.x = Math.max(-1.2, Math.min(1.2, camera.rotation.x));
+                }
+            });
+
+            newQuestion();
+            animate();
+        }
+
+        function shoot() {
+            const b = new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshBasicMaterial({color: 0xff0000}));
+            b.position.copy(player.position);
+            b.position.y += 1.4;
+            const dir = new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);
+            b.userData.velocity = dir.multiplyScalar(2);
+            scene.add(b);
+            bullets.push(b);
+        }
+
+        function newQuestion() {
+            // لو خلصنا كل الأسئلة نرجع نستخدمهم تاني
+            if(questions.length === 0) { questions = [...usedQuestions]; usedQuestions = []; }
+            
+            const qIdx = Math.floor(Math.random() * questions.length);
+            const q = questions[qIdx];
+            
+            document.getElementById('p-cat').innerText = "التصنيف: " + q.c;
+            document.getElementById('p-ques').innerText = q.q;
+            window.currentAns = q.a;
+            window.currentQIdx = qIdx;
+        }
+
+        window.checkAnswer = () => {
+            const userAns = document.getElementById('p-ans').value.trim();
+            if(userAns.includes(window.currentAns)) {
+                // إجابة صحيحة
+                portal.position.z -= 300; // البوابة تبعد 300 متر قدام
+                isPaused = false;
+                document.getElementById('puzzle-ui').style.display = 'none';
+                document.getElementById('p-ans').value = "";
+                document.getElementById('p-msg').style.display = "none";
+                document.body.requestPointerLock();
+                
+                // شيل السؤال من القائمة عشان ميتكررش
+                usedQuestions.push(questions.splice(window.currentQIdx, 1)[0]);
+                newQuestion();
+            } else {
+                // إجابة غلط
+                document.getElementById('p-msg').style.display = "block";
+                document.getElementById('p-ans').value = "";
+            }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(isLocked && !isPaused) {
+                const speed = 0.35;
+                const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);
+                const side = new THREE.Vector3(1,0,0).applyQuaternion(player.quaternion);
+                if(move.w) player.position.addScaledVector(fwd, speed);
+                if(move.s) player.position.addScaledVector(fwd, -speed);
+                if(move.a) player.position.addScaledVector(side, -speed);
+                if(move.d) player.position.addScaledVector(side, speed);
+
+                player.position.x = Math.max(-4.5, Math.min(4.5, player.position.x));
+
+                // فوز عند 1500 متر
+                const currentDist = Math.abs(Math.floor(player.position.z));
+                document.getElementById('dist').innerText = currentDist;
+                
+                if(currentDist >= 1500) {
+                    window.location.href = "win.html"; // حوله للصفحة الجديدة
+                    return;
+                }
+
+                // Sync Online
+                set(ref(db, `sectorB/players/${myID}`), {
+                    x: player.position.x, y: player.position.y, z: player.position.z,
+                    ry: player.rotation.y
+                });
+
+                if(flashOn) {
+                    battery -= 0.05;
+                    document.getElementById('battery-fill').style.width = battery + "%";
+                    if(battery <= 0) { battery=0; flashOn=false; flashLight.intensity=0; }
+                }
+
+                // الكشف عن البوابة
+                if(player.position.distanceTo(portal.position) < 5) {
+                    isPaused = true; 
+                    document.exitPointerLock();
+                    document.getElementById('puzzle-ui').style.display = 'block';
+                }
+            }
+
+            bullets.forEach((b, index) => {
+                b.position.add(b.userData.velocity);
+                if(b.position.distanceTo(player.position) > 150) {
+                    scene.remove(b);
+                    bullets.splice(index, 1);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
